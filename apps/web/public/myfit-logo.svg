@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 260" role="img" aria-labelledby="title description">
+  <title id="title">MyFit Private Fitness</title>
+  <desc id="description">Zlaté logo MY a orámované FIT s textem Private Fitness.</desc>
+  <g fill="#C49432">
+    <text x="22" y="130" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="400" letter-spacing="12">MY</text>
+    <text x="298" y="126" font-family="Courier New, monospace" font-size="70" font-weight="400" letter-spacing="5">FIT</text>
+    <text x="88" y="226" font-family="Courier New, monospace" font-size="29" font-weight="400" letter-spacing="8">PRIVATE FITNESS</text>
+  </g>
+  <rect x="263" y="39" width="212" height="132" fill="none" stroke="#C49432" stroke-width="4" />
+</svg>

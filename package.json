@@ -1,0 +1,27 @@
+{
+  "name": "myfit-marketing-manager",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.16.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev --parallel",
+    "start": "pnpm --filter @myfit/web start",
+    "lint": "turbo lint",
+    "test": "turbo test && node --test scripts/release-check.test.mjs",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "release:check": "node scripts/release-check.mjs",
+    "db:generate": "pnpm --filter @myfit/database db:generate",
+    "db:migrate": "pnpm --filter @myfit/database db:migrate"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6",
+    "turbo": "2.10.9",
+    "typescript": "5.9.3"
+  }
+}

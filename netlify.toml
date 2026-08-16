@@ -1,0 +1,15 @@
+[build]
+  command = "pnpm --filter @myfit/web build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "24"
+  PNPM_VERSION = "11.19.0"
+  NETLIFY_NEXT_SKEW_PROTECTION = "true"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."check-reservations"]
+  schedule = "@hourly"

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">MyFit</title>
+  <rect width="512" height="512" rx="72" fill="#080A0E" />
+  <g fill="#C49432" stroke="#C49432">
+    <text x="58" y="260" font-family="Arial, Helvetica, sans-serif" font-size="118" font-weight="400" letter-spacing="10">MY</text>
+    <rect x="278" y="142" width="176" height="154" fill="none" stroke-width="5" />
+    <text x="304" y="247" font-family="Courier New, monospace" font-size="74" font-weight="400" letter-spacing="3" stroke="none">FIT</text>
+    <text x="78" y="366" font-family="Courier New, monospace" font-size="25" font-weight="400" letter-spacing="7" stroke="none">PRIVATE FITNESS</text>
+  </g>
+</svg>
