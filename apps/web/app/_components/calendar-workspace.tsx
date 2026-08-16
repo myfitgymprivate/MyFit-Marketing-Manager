@@ -1464,6 +1464,30 @@ export function CalendarWorkspace() {
                             {editingVisualFrames.length} připraveno
                           </span>
                         </div>
+                        {activeSeriesSlides.length === 0 ? (
+                          <div className="calendar-series-callout">
+                            <div>
+                              <span>Grafika ještě není vytvořená</span>
+                              <strong>
+                                Níže je pouze textový brief, ne výsledný návrh.
+                              </strong>
+                              <p>
+                                AI připraví fotografii, kompletní sazbu, ikony a
+                                samostatné PNG pro každou stránku.
+                              </p>
+                            </div>
+                            <button
+                              className="primary-button"
+                              disabled={visualBusy}
+                              onClick={generateVisualSeries}
+                              type="button"
+                            >
+                              {visualBusy
+                                ? "Agent tvoří celou sérii…"
+                                : `Vygenerovat ${editingVisualFrames.length} hotové PNG s AI`}
+                            </button>
+                          </div>
+                        ) : null}
                         {editingVisualFrames.map((frame) => {
                           const slide = activeSeriesSlides.find(
                             (candidate) =>
@@ -1493,10 +1517,17 @@ export function CalendarWorkspace() {
                                 <div
                                   className={`calendar-story-placeholder ${editingItem.type === "POST" ? "post" : "story"}`}
                                 >
-                                  <span>MY FIT</span>
-                                  <strong>{frame.headline}</strong>
-                                  <p>{frame.message}</p>
-                                  <small>{frame.visualDirection}</small>
+                                  <span>
+                                    Textový podklad · slide {frame.position}
+                                  </span>
+                                  <div>
+                                    <strong>{frame.headline}</strong>
+                                    <p>{frame.message}</p>
+                                  </div>
+                                  <small>
+                                    Fotografie a finální design se vytvoří po
+                                    spuštění AI generování.
+                                  </small>
                                 </div>
                               )}
                               <div className="button-row wrap-buttons">
@@ -1556,24 +1587,24 @@ export function CalendarWorkspace() {
                       <strong>{editingReadiness.label}</strong>
                       <small>{editingReadiness.detail}</small>
                     </div>
-                    <button
-                      className="primary-button"
-                      disabled={visualBusy}
-                      onClick={generateVisual}
-                      type="button"
-                    >
-                      {visualBusy
-                        ? isVisualSeries
-                          ? "Agent tvoří celou sérii…"
-                          : "Agent tvoří grafiku…"
-                        : isVisualSeries
-                          ? activeSeriesSlides.length
+                    {!isVisualSeries || activeSeriesSlides.length > 0 ? (
+                      <button
+                        className="primary-button"
+                        disabled={visualBusy}
+                        onClick={generateVisual}
+                        type="button"
+                      >
+                        {visualBusy
+                          ? isVisualSeries
+                            ? "Agent tvoří celou sérii…"
+                            : "Agent tvoří grafiku…"
+                          : isVisualSeries
                             ? `Regenerovat celou sérii (${editingVisualFrames.length} PNG)`
-                            : `Vytvořit celou sérii (${editingVisualFrames.length} stránky)`
-                          : activeVisual
-                            ? "Vytvořit novou variantu"
-                            : "Vygenerovat grafiku s agentem"}
-                    </button>
+                            : activeVisual
+                              ? "Vytvořit novou variantu"
+                              : "Vygenerovat grafiku s agentem"}
+                      </button>
+                    ) : null}
                     {isVisualSeries &&
                     activeSeriesSlides.length === editingVisualFrames.length ? (
                       <button

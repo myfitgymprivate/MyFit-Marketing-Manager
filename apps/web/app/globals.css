@@ -1561,6 +1561,41 @@ select:focus {
   font-size: 12px;
 }
 
+.calendar-series-callout {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  background: #171513;
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  color: #fff8ed;
+}
+
+.calendar-series-callout div {
+  display: grid;
+  gap: 5px;
+}
+
+.calendar-series-callout span {
+  color: #d9b66d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.calendar-series-callout strong {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 18px;
+}
+
+.calendar-series-callout p {
+  margin: 0;
+  color: #d9d0c4;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .calendar-story-slide {
   padding: 12px;
   display: grid;
@@ -1582,8 +1617,16 @@ select:focus {
   flex-direction: column;
   justify-content: space-between;
   color: var(--ink);
-  background: linear-gradient(145deg, #f8ead7, #d5ae68);
-  border: 1px solid var(--accent);
+  background:
+    linear-gradient(rgba(255, 252, 246, 0.92), rgba(255, 252, 246, 0.92)),
+    repeating-linear-gradient(
+      -45deg,
+      #f5ead8 0,
+      #f5ead8 12px,
+      #fffaf1 12px,
+      #fffaf1 24px
+    );
+  border: 2px dashed #c8ad7b;
   border-radius: 14px;
 }
 
@@ -1592,20 +1635,24 @@ select:focus {
 }
 
 .calendar-story-placeholder p {
-  margin: 8px 0 auto;
+  margin: 10px 0 0;
   max-width: 28ch;
-  color: #3c352c;
+  color: var(--muted);
   line-height: 1.45;
 }
 
 .calendar-story-placeholder span,
 .calendar-story-placeholder small {
-  color: var(--accent-dark);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .calendar-story-placeholder strong {
-  font-size: 20px;
-  text-transform: uppercase;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 22px;
 }
 
 .visual-readiness {
