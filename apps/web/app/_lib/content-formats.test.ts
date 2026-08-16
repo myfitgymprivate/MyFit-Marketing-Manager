@@ -17,8 +17,10 @@ describe("Publishable Reel and Post packages", () => {
 
   it("contains a complete Post handoff", () => {
     const exported = contentPackageToText(postBenefitsPackage);
+    expect(postBenefitsPackage.slides).toHaveLength(4);
     expect(postBenefitsPackage.visualBrief.length).toBeGreaterThanOrEqual(5);
     expect(exported).toContain("FINÁLNÍ CAPTION");
+    expect(exported).toContain("CAROUSEL – TEXTY PO STRÁNKÁCH");
     expect(exported).toContain("VIZUÁLNÍ ZADÁNÍ");
   });
 });

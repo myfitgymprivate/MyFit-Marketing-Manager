@@ -20,6 +20,12 @@ export type PostContentPackage = {
   headline: string;
   message: string;
   caption: string;
+  slides: Array<{
+    position: number;
+    headline: string;
+    message: string;
+    visualDirection: string;
+  }>;
   visualBrief: string[];
   altText: string;
   cta: string;
@@ -90,6 +96,36 @@ export const postBenefitsPackage: PostContentPackage = {
   message: "Klid, soukromí a čas věnovaný jen sobě.",
   caption:
     "Trénink nemusí znamenat hluk, čekání ani spěch. V MyFit získáš klidný prostor, ve kterém se můžeš soustředit na sebe a svoje tempo. Zacvič si. Vyčisti hlavu. Nabij tělo.",
+  slides: [
+    {
+      position: 1,
+      headline: "TVŮJ PROSTOR. TVÉ TEMPO.",
+      message: "Klid, soukromí a čas věnovaný jen sobě.",
+      visualDirection:
+        "Cover s mléčným přechodem vlevo a světlým privátním studiem vpravo.",
+    },
+    {
+      position: 2,
+      headline: "SOUKROMÍ",
+      message: "Celé studio máš jen pro sebe.",
+      visualDirection:
+        "Detail čistého prostoru, lavičky a jednoruček bez dalších lidí.",
+    },
+    {
+      position: 3,
+      headline: "BEZ ČEKÁNÍ",
+      message: "Cvičíš ve svém čase a vlastním tempu.",
+      visualDirection:
+        "Otevřené okno, teplé slunce, rostlina a hodně volného prostoru.",
+    },
+    {
+      position: 4,
+      headline: "UDĚLEJ SI ČAS PRO SEBE",
+      message: "Vyber si svůj termín.",
+      visualDirection:
+        "Čistý závěrečný slide s jemným zlatým rámečkem a prostorem pro CTA.",
+    },
+  ],
   visualBrief: [
     "Formát 1080 × 1350 px, světlý boutique post",
     "Vlevo krémový mléčný prostor pro krátký text",
@@ -136,6 +172,13 @@ export function contentPackageToText(content: ContentPackage) {
     `HLAVNÍ SDĚLENÍ\n${content.headline}\n${content.message}`,
     "",
     `FINÁLNÍ CAPTION\n${content.caption}\n${content.cta}`,
+    "",
+    "CAROUSEL – TEXTY PO STRÁNKÁCH",
+    ...content.slides.flatMap((slide) => [
+      `${slide.position}. ${slide.headline}`,
+      slide.message,
+      `Vizuál: ${slide.visualDirection}`,
+    ]),
     "",
     "VIZUÁLNÍ ZADÁNÍ",
     ...content.visualBrief.map((item) => `- ${item}`),

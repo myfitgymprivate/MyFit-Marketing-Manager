@@ -76,15 +76,15 @@ export async function POST(request: Request) {
     const compositionPrompt = myfitStoryCompositions[composition];
     const result = await client.images.generate({
       model: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2",
-      prompt: `Create a new photographic art direction for a MyFit Instagram ${isStory ? "Story" : "Post"}. Theme: ${parsedBody.data.theme}. Composition: ${compositionPrompt}. Template direction: ${template.imagePrompt}.
+      prompt: `Create a production-quality photographic art direction for a MyFit Instagram ${isStory ? "Story" : "Post carousel page"}. Theme: ${parsedBody.data.theme}. Composition: ${compositionPrompt}. Template direction: ${template.imagePrompt}.
 
 MANDATORY MYFIT BRAND MANUAL:
 ${myfitBrandManual}
 ${customAgentMemoryInstructions(parsedBody.data.memory, "image")}
 
-Create only the photographic background. Keep it bright, warm, airy and architectural, with cream-to-photo text-safe negative space on the left and the private-gym scene on the right. Prefer no person; if a person is essential, show at most one natural non-bodybuilder adult without posing. The application adds typography and branding later. Absolutely no text, letters, logos, icons, watermarks, prices, discounts, dates, invented products or invented business facts.`,
+Create only the photographic background, but make it polished enough for a real boutique-hotel campaign rather than a generic stock photo. Use believable architecture, correct gym equipment geometry, refined materials, natural shadows and editorial composition. Keep it bright, warm, airy and architectural, with cream-to-photo text-safe negative space on the left and the private-gym scene on the right. Prefer no person; if a person is essential, show at most one natural non-bodybuilder adult without posing. Avoid duplicated dumbbells, malformed equipment, synthetic plastic surfaces and impossible windows. The application adds typography and branding later. Absolutely no text, letters, logos, icons, watermarks, prices, discounts, dates, invented products or invented business facts.`,
       size: "1024x1536",
-      quality: "low",
+      quality: "medium",
       output_format: "png",
     });
     const imageBase64 = result.data?.[0]?.b64_json;

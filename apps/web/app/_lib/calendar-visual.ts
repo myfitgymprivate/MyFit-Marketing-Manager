@@ -6,6 +6,16 @@ export type CalendarContentKit = {
   theme: string;
   visualDirection: string;
   textVariants: CalendarTextVariant[];
+  slides?: CalendarSlideDraft[];
+};
+
+export type CalendarSlideDraft = {
+  position: number;
+  role: "hook" | "benefit" | "detail" | "cta";
+  headline: string;
+  message: string;
+  visualDirection: string;
+  cta?: string;
 };
 
 export type CalendarTextVariant = {
@@ -23,10 +33,11 @@ export type SavedCalendarVisual = {
   generatedAt: string;
   mode: "live" | "demo";
   kit: CalendarContentKit;
+  slides?: SavedCalendarSlide[];
   storySlides?: SavedCalendarStorySlide[];
 };
 
-export type SavedCalendarStorySlide = {
+export type SavedCalendarSlide = {
   position: number;
   dataUrl: string;
   generatedAt: string;
@@ -34,6 +45,8 @@ export type SavedCalendarStorySlide = {
   version: number;
   kit: CalendarContentKit;
 };
+
+export type SavedCalendarStorySlide = SavedCalendarSlide;
 
 export type CalendarVisualMeta = {
   generatedAt: string;
@@ -70,26 +83,117 @@ export function createStorySlideContentKit(
   frame: { text: string; direction: string; position: number },
   options: { title: string; cta?: string; totalSlides: number },
 ): CalendarContentKit {
+  return createSeriesSlideContentKit(
+    baseKit,
+    {
+      position: frame.position,
+      role:
+        frame.position === 1
+          ? "hook"
+          : frame.position === options.totalSlides
+            ? "cta"
+            : "detail",
+      headline: frame.text.split("\n")[0]?.trim() || options.title,
+      message: frame.text,
+      visualDirection: frame.direction,
+      cta:
+        frame.position === options.totalSlides
+          ? options.cta || baseKit.cta
+          : undefined,
+    },
+    options,
+  );
+}
+
+export function createSeriesSlideContentKit(
+  baseKit: CalendarContentKit,
+  frame: CalendarSlideDraft,
+  options: { title: string; cta?: string; totalSlides: number },
+): CalendarContentKit {
   return {
     ...baseKit,
     headline: compactText(
-      frame.text.split("\n")[0]?.trim() || options.title,
+      frame.headline || options.title,
       CONTENT_KIT_LIMITS.headline,
     ),
-    message: compactText(frame.text, CONTENT_KIT_LIMITS.message),
+    message: compactText(frame.message, CONTENT_KIT_LIMITS.message),
     caption: compactText(baseKit.caption, CONTENT_KIT_LIMITS.caption),
     cta: compactText(
-      frame.position === options.totalSlides
-        ? options.cta || baseKit.cta
-        : baseKit.cta,
+      frame.cta ||
+        (frame.position === options.totalSlides
+          ? options.cta || baseKit.cta
+          : baseKit.cta),
       CONTENT_KIT_LIMITS.cta,
     ),
     theme: compactText(baseKit.theme, CONTENT_KIT_LIMITS.theme),
     visualDirection: compactText(
-      [frame.direction, baseKit.visualDirection].filter(Boolean).join(". "),
+      [
+        `Stránka ${frame.position} z ${options.totalSlides}, role ${frame.role}`,
+        frame.visualDirection,
+        baseKit.visualDirection,
+      ]
+        .filter(Boolean)
+        .join(". "),
       CONTENT_KIT_LIMITS.visualDirection,
     ),
   };
+}
+
+export function createPostCarouselSlides(
+  title: string,
+  kit: CalendarContentKit,
+): CalendarSlideDraft[] {
+  if (kit.slides && kit.slides.length > 1)
+    return [...kit.slides]
+      .sort((first, second) => first.position - second.position)
+      .slice(0, 4)
+      .map((slide, index, slides) => ({
+        ...slide,
+        position: index + 1,
+        role:
+          index === 0
+            ? "hook"
+            : index === slides.length - 1
+              ? "cta"
+              : slide.role,
+        cta: index === slides.length - 1 ? slide.cta || kit.cta : slide.cta,
+      }));
+
+  return [
+    {
+      position: 1,
+      role: "hook",
+      headline: kit.headline || title,
+      message: kit.message,
+      visualDirection:
+        "Úvodní editorial cover. Velký klidný headline vlevo, světlé okno a privátní studio vpravo.",
+    },
+    {
+      position: 2,
+      role: "benefit",
+      headline: "SOUKROMÍ",
+      message: "Celé studio máš jen pro sebe.",
+      visualDirection:
+        "Detail čistého prostoru, lavičky a jednoruček. Hodně vzduchu, žádní další lidé.",
+    },
+    {
+      position: 3,
+      role: "benefit",
+      headline: "VLASTNÍ TEMPO",
+      message: "Cvičíš v klidu, bez čekání a zbytečného ruchu.",
+      visualDirection:
+        "Otevřené okno, přirozené teplé světlo, rostlina a nenucená wellness atmosféra.",
+    },
+    {
+      position: 4,
+      role: "cta",
+      headline: "UDĚLEJ SI ČAS PRO SEBE",
+      message: "Tvůj prostor. Tvé tempo.",
+      visualDirection:
+        "Čistý závěrečný slide s velkým negativním prostorem a jemným zlatým rámečkem pro CTA.",
+      cta: kit.cta,
+    },
+  ];
 }
 
 export function createCalendarVisualRequestCopy(
@@ -108,9 +212,10 @@ export function calendarVisualReady(
   item: { type: string; storySlideCount?: number },
   meta?: CalendarVisualMeta,
   completedStorySlides?: number,
+  expectedSeriesSlides?: number,
 ) {
-  const expectedSlides = item.storySlideCount ?? 1;
-  if (item.type === "STORY" && expectedSlides > 1)
+  const expectedSlides = expectedSeriesSlides ?? item.storySlideCount ?? 1;
+  if (expectedSlides > 1)
     return completedStorySlides === undefined
       ? meta?.storySlideCount === expectedSlides
       : completedStorySlides === expectedSlides;
@@ -205,8 +310,8 @@ function drawCover(
   );
 }
 
-function drawLogo(context: CanvasRenderingContext2D, light: boolean) {
-  const color = light ? "#c49432" : "#dbbe50";
+function drawLogo(context: CanvasRenderingContext2D) {
+  const color = "#b7862c";
   context.fillStyle = color;
   context.font = "400 58px Arial";
   context.fillText("MY", 62, 125);
@@ -219,10 +324,151 @@ function drawLogo(context: CanvasRenderingContext2D, light: boolean) {
   context.fillText("P R I V A T E   F I T N E S S", 64, 188);
 }
 
+function drawTextLines(
+  context: CanvasRenderingContext2D,
+  text: string,
+  options: {
+    x: number;
+    y: number;
+    maxWidth: number;
+    lineHeight: number;
+    maxLines: number;
+  },
+) {
+  const lines = wrapText(context, text, options.maxWidth).slice(
+    0,
+    options.maxLines,
+  );
+  lines.forEach((line, index) =>
+    context.fillText(line, options.x, options.y + index * options.lineHeight),
+  );
+  return options.y + Math.max(0, lines.length - 1) * options.lineHeight;
+}
+
+function fitHeadlineTypography(
+  context: CanvasRenderingContext2D,
+  text: string,
+  options: {
+    maxWidth: number;
+    maxLines: number;
+    preferredSize: number;
+    minimumSize: number;
+  },
+) {
+  for (
+    let fontSize = options.preferredSize;
+    fontSize >= options.minimumSize;
+    fontSize -= 4
+  ) {
+    context.font = `400 ${fontSize}px Georgia`;
+    const lines = wrapText(context, text, options.maxWidth);
+    if (
+      lines.length <= options.maxLines &&
+      lines.every((line) => context.measureText(line).width <= options.maxWidth)
+    ) {
+      return { fontSize, lineHeight: Math.round(fontSize * 1.14) };
+    }
+  }
+
+  return {
+    fontSize: options.minimumSize,
+    lineHeight: Math.round(options.minimumSize * 1.14),
+  };
+}
+
+function drawHeart(context: CanvasRenderingContext2D, x: number, y: number) {
+  context.save();
+  context.translate(x, y);
+  context.beginPath();
+  context.moveTo(0, 12);
+  context.bezierCurveTo(-30, -16, -54, 22, 0, 64);
+  context.bezierCurveTo(54, 22, 30, -16, 0, 12);
+  context.stroke();
+  context.restore();
+}
+
+export type CalendarGraphicPage = {
+  position: number;
+  total: number;
+  role: CalendarSlideDraft["role"];
+  supportingPoints?: Array<Pick<CalendarSlideDraft, "headline" | "message">>;
+};
+
+function drawBenefitIcon(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  index: number,
+) {
+  context.save();
+  context.translate(x, y);
+  context.strokeStyle = "#b7862c";
+  context.lineWidth = 2.5;
+  context.beginPath();
+  context.arc(0, 0, 42, 0, Math.PI * 2);
+  context.stroke();
+
+  if (index % 3 === 0) {
+    context.beginPath();
+    context.roundRect(-15, -4, 30, 26, 4);
+    context.stroke();
+    context.beginPath();
+    context.arc(0, -5, 11, Math.PI, Math.PI * 2);
+    context.stroke();
+  } else if (index % 3 === 1) {
+    context.beginPath();
+    context.arc(0, 0, 19, 0, Math.PI * 2);
+    context.moveTo(0, 0);
+    context.lineTo(0, -12);
+    context.moveTo(0, 0);
+    context.lineTo(11, 7);
+    context.stroke();
+  } else {
+    context.beginPath();
+    context.moveTo(0, 21);
+    context.bezierCurveTo(-27, 5, -25, -19, 0, -25);
+    context.bezierCurveTo(25, -19, 27, 5, 0, 21);
+    context.moveTo(0, 18);
+    context.lineTo(0, -17);
+    context.stroke();
+  }
+  context.restore();
+}
+
+function drawSupportingPoints(
+  context: CanvasRenderingContext2D,
+  points: Array<Pick<CalendarSlideDraft, "headline" | "message">>,
+  options: { x: number; y: number; maxWidth: number; gap: number },
+) {
+  points.forEach((point, index) => {
+    const y = options.y + index * options.gap;
+    drawBenefitIcon(context, options.x + 44, y + 28, index);
+    context.fillStyle = "#171513";
+    context.font = "600 27px Arial";
+    context.letterSpacing = "2px";
+    context.fillText(
+      point.headline.toLocaleUpperCase("cs-CZ"),
+      options.x + 112,
+      y + 13,
+    );
+    context.letterSpacing = "0px";
+    context.fillStyle = "#4b4640";
+    context.font = "400 24px Arial";
+    drawTextLines(context, point.message, {
+      x: options.x + 112,
+      y: y + 52,
+      maxWidth: options.maxWidth - 112,
+      lineHeight: 32,
+      maxLines: 2,
+    });
+  });
+}
+
 export async function createCalendarGraphic(
   type: string,
   kit: CalendarContentKit,
   backgroundDataUrl: string,
+  page?: CalendarGraphicPage,
 ) {
   const isPost = type === "POST";
   const width = 1080;
@@ -236,90 +482,145 @@ export async function createCalendarGraphic(
   const image = await loadImage(backgroundDataUrl);
   drawCover(context, image, width, height);
 
-  if (isPost) {
-    const shade = context.createLinearGradient(0, 0, width, 0);
-    shade.addColorStop(0, "rgba(8,10,14,.96)");
-    shade.addColorStop(0.58, "rgba(8,10,14,.64)");
-    shade.addColorStop(1, "rgba(8,10,14,.18)");
-    context.fillStyle = shade;
-    context.fillRect(0, 0, width, height);
-    drawLogo(context, false);
-    context.fillStyle = "#dbbe50";
-    context.font = "400 38px Courier New";
-    context.fillText("MYFIT NOVINKA", 60, 340);
-    context.fillStyle = "#fff8ec";
-    context.font = "400 72px Courier New";
-    const lines = wrapText(
-      context,
-      kit.headline.toLocaleUpperCase("cs-CZ"),
-      760,
-    ).slice(0, 4);
-    lines.forEach((line, index) =>
-      context.fillText(line, 60, 440 + index * 82),
-    );
-    context.strokeStyle = "#c49432";
-    context.lineWidth = 4;
-    context.beginPath();
-    context.moveTo(60, 810);
-    context.lineTo(560, 810);
-    context.stroke();
-    context.fillStyle = "#f3dcc2";
-    context.font = "400 32px Courier New";
-    wrapText(context, kit.message.toLocaleUpperCase("cs-CZ"), 720)
-      .slice(0, 3)
-      .forEach((line, index) => context.fillText(line, 60, 900 + index * 42));
-    context.fillStyle = "#c49432";
-    context.font = "400 25px Courier New";
-    context.fillText(`${kit.cta.toLocaleUpperCase("cs-CZ")}  →`, 60, 1220);
+  const shade = context.createLinearGradient(0, 0, width * 0.84, 0);
+  shade.addColorStop(0, "rgba(250,239,222,.995)");
+  shade.addColorStop(0.48, "rgba(250,239,222,.95)");
+  shade.addColorStop(0.76, "rgba(250,239,222,.5)");
+  shade.addColorStop(1, "rgba(250,239,222,.04)");
+  context.fillStyle = shade;
+  context.fillRect(0, 0, width, height);
+
+  const warmth = context.createLinearGradient(0, 0, 0, height);
+  warmth.addColorStop(0, "rgba(255,250,242,.12)");
+  warmth.addColorStop(1, "rgba(120,78,24,.12)");
+  context.fillStyle = warmth;
+  context.fillRect(0, 0, width, height);
+
+  drawLogo(context);
+
+  const pagePosition = page?.position ?? 1;
+  const pageTotal = page?.total ?? 1;
+  const pageRole = page?.role ?? "hook";
+  const supportingPoints = page?.supportingPoints ?? [];
+  const left = 64;
+  const textWidth = isPost ? 630 : 690;
+  const headlineStart = isPost ? 360 : 470;
+  const headline = kit.headline.toLocaleUpperCase("cs-CZ");
+  const headlineLines = isPost ? 4 : 5;
+  const headlineTypography = fitHeadlineTypography(context, headline, {
+    maxWidth: textWidth,
+    maxLines: headlineLines,
+    preferredSize: isPost ? 82 : 94,
+    minimumSize: isPost ? 44 : 42,
+  });
+
+  context.fillStyle = "#9a6d22";
+  context.font = "600 24px Arial";
+  context.letterSpacing = "5px";
+  context.fillText(
+    pageRole === "cta"
+      ? "ČAS PRO SEBE"
+      : pageRole === "hook"
+        ? "BOUTIQUE PRIVATE FITNESS"
+        : "PROČ MY FIT",
+    left,
+    headlineStart - 88,
+  );
+  context.letterSpacing = "0px";
+
+  context.fillStyle = "#171513";
+  context.font = `400 ${headlineTypography.fontSize}px Georgia`;
+  const headlineEnd = drawTextLines(context, headline, {
+    x: left,
+    y: headlineStart,
+    maxWidth: textWidth,
+    lineHeight: headlineTypography.lineHeight,
+    maxLines: headlineLines,
+  });
+
+  const dividerY = Math.min(
+    headlineEnd + (isPost ? 70 : 92),
+    isPost ? 780 : 1080,
+  );
+  context.strokeStyle = "#b7862c";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(left, dividerY);
+  context.lineTo(left + 210, dividerY);
+  context.moveTo(left + 300, dividerY);
+  context.lineTo(left + 540, dividerY);
+  context.stroke();
+  context.lineWidth = 2;
+  drawHeart(context, left + 255, dividerY - 15);
+
+  if (pageRole === "hook" && supportingPoints.length > 0) {
+    drawSupportingPoints(context, supportingPoints.slice(0, isPost ? 2 : 3), {
+      x: left,
+      y: dividerY + (isPost ? 70 : 88),
+      maxWidth: textWidth,
+      gap: isPost ? 122 : 144,
+    });
   } else {
-    const shade = context.createLinearGradient(0, 0, 900, 0);
-    shade.addColorStop(0, "rgba(243,220,194,.99)");
-    shade.addColorStop(0.52, "rgba(243,220,194,.92)");
-    shade.addColorStop(1, "rgba(243,220,194,.08)");
-    context.fillStyle = shade;
-    context.fillRect(0, 0, width, height);
-    drawLogo(context, true);
-    context.fillStyle = "#c49432";
-    context.font = "400 40px Courier New";
-    context.fillText(type === "REEL" ? "REEL" : "STORY", 60, 390);
-    context.fillStyle = "#111114";
-    context.font = "400 70px Courier New";
-    const lines = wrapText(
-      context,
-      kit.headline.toLocaleUpperCase("cs-CZ"),
-      720,
-    ).slice(0, 5);
-    lines.forEach((line, index) =>
-      context.fillText(line, 60, 490 + index * 80),
-    );
-    context.strokeStyle = "#c49432";
-    context.lineWidth = 5;
+    const messageY = dividerY + (isPost ? 78 : 108);
+    context.fillStyle = "rgba(255,250,242,.74)";
     context.beginPath();
-    context.moveTo(0, 980);
-    context.lineTo(560, 980);
-    context.stroke();
-    context.fillStyle = "#111114";
-    context.font = "400 34px Courier New";
-    wrapText(context, kit.message.toLocaleUpperCase("cs-CZ"), 700)
-      .slice(0, 3)
-      .forEach((line, index) => context.fillText(line, 60, 1080 + index * 46));
-    context.fillStyle = "rgba(243,220,194,.86)";
-    context.beginPath();
-    context.roundRect(64, 1480, 950, 250, 38);
+    context.roundRect(left, messageY - 44, textWidth, isPost ? 190 : 230, 18);
     context.fill();
-    context.strokeStyle = "#c49432";
-    context.lineWidth = 4;
+    context.strokeStyle = "rgba(183,134,44,.52)";
     context.stroke();
-    context.fillStyle = "#c49432";
-    context.font = "400 31px Courier New";
-    context.fillText("PŘIPRAVENO PRO MYFIT", 120, 1570);
-    context.fillStyle = "#111114";
-    context.font = "400 42px Courier New";
-    context.fillText(kit.cta.toLocaleUpperCase("cs-CZ"), 120, 1650);
-    context.fillStyle = "#8f661b";
-    context.font = "400 22px Courier New";
-    context.fillText("MYFITGYM.CZ", 60, 1840);
+    context.fillStyle = "#2b2926";
+    context.font = `400 ${isPost ? 31 : 38}px Arial`;
+    drawTextLines(context, kit.message, {
+      x: left + 34,
+      y: messageY + 16,
+      maxWidth: textWidth - 68,
+      lineHeight: isPost ? 44 : 54,
+      maxLines: 4,
+    });
+    context.fillStyle = "#9a6d22";
+    context.font = `italic ${isPost ? 24 : 30}px Georgia`;
+    context.fillText(
+      pageRole === "cta"
+        ? "Udělej něco pro sebe."
+        : "Vlastní tempo. Vlastní prostor.",
+      left + 34,
+      messageY + (isPost ? 146 : 178),
+    );
   }
+
+  const ctaY = isPost ? 1160 : 1635;
+  context.fillStyle = "rgba(250,239,222,.88)";
+  context.beginPath();
+  context.roundRect(left, ctaY, isPost ? 650 : 730, isPost ? 104 : 126, 8);
+  context.fill();
+  context.strokeStyle = "#b7862c";
+  context.lineWidth = 2;
+  context.stroke();
+  context.fillStyle = "#171513";
+  context.font = `500 ${isPost ? 25 : 31}px Arial`;
+  context.letterSpacing = "3px";
+  context.fillText(
+    kit.cta.toLocaleUpperCase("cs-CZ"),
+    left + 36,
+    ctaY + (isPost ? 65 : 77),
+  );
+  context.letterSpacing = "0px";
+  context.fillStyle = "#b7862c";
+  context.font = `400 ${isPost ? 44 : 52}px Arial`;
+  context.fillText("→", left + (isPost ? 565 : 638), ctaY + (isPost ? 69 : 81));
+
+  context.fillStyle = "#8f661b";
+  context.font = `500 ${isPost ? 18 : 22}px Arial`;
+  context.letterSpacing = "2px";
+  context.fillText("MYFITGYM.CZ", left, height - 58);
+  context.textAlign = "right";
+  context.fillText(
+    `${String(pagePosition).padStart(2, "0")} / ${String(pageTotal).padStart(2, "0")}`,
+    width - 58,
+    height - 58,
+  );
+  context.textAlign = "left";
+  context.letterSpacing = "0px";
 
   return canvas.toDataURL("image/png");
 }

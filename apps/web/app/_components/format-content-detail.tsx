@@ -76,6 +76,19 @@ export function FormatContentDetail({ content }: { content: ContentPackage }) {
               <p>{content.message}</p>
             </section>
             <section className="content-package-section">
+              <p className="eyebrow accent">Carousel · všechny stránky</p>
+              <div className="carousel-copy-grid">
+                {content.slides.map((slide) => (
+                  <article key={slide.position}>
+                    <span>{String(slide.position).padStart(2, "0")}</span>
+                    <strong>{slide.headline}</strong>
+                    <p>{slide.message}</p>
+                    <small>{slide.visualDirection}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+            <section className="content-package-section">
               <p className="eyebrow accent">Vizuální zadání</p>
               <ul>
                 {content.visualBrief.map((item) => (

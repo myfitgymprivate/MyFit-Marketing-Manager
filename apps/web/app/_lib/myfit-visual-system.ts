@@ -1,4 +1,4 @@
-export const MYFIT_VISUAL_STYLE_VERSION = "myfit-boutique-private-2026-08-v3";
+export const MYFIT_VISUAL_STYLE_VERSION = "myfit-boutique-private-2026-08-v4";
 
 export const myfitStoryCompositions = {
   editorial_split:

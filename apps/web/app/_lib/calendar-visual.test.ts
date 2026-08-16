@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   calendarVisualReady,
   createCalendarVisualRequestCopy,
+  createPostCarouselSlides,
+  createSeriesSlideContentKit,
   createStorySlideContentKit,
   type CalendarContentKit,
 } from "./calendar-visual";
@@ -29,6 +31,14 @@ describe("calendar visual readiness", () => {
         oldSingleVisual,
       ),
     ).toBe(true);
+  });
+
+  it("requires every page of a Post carousel", () => {
+    const item = { type: "POST", storySlideCount: undefined };
+
+    expect(calendarVisualReady(item, oldSingleVisual, 1, 4)).toBe(false);
+    expect(calendarVisualReady(item, oldSingleVisual, 3, 4)).toBe(false);
+    expect(calendarVisualReady(item, oldSingleVisual, 4, 4)).toBe(true);
   });
 });
 
@@ -84,5 +94,44 @@ describe("calendar visual request compatibility", () => {
     expect(
       createCalendarVisualRequestCopy(slideKit).theme.length,
     ).toBeLessThanOrEqual(240);
+  });
+});
+
+describe("Post carousel plan", () => {
+  const kit: CalendarContentKit = {
+    headline: "Tvůj prostor. Tvé tempo.",
+    message: "Klid, soukromí a čas pro sebe.",
+    caption: "Dopřej si trénink v klidu.",
+    cta: "Vyber si svůj termín",
+    theme: "Soukromé fitness",
+    visualDirection: "Světlý boutique editorial",
+    textVariants: [],
+  };
+
+  it("creates four concrete Canva-ready pages for an old single Post", () => {
+    const slides = createPostCarouselSlides("Benefity MyFit", kit);
+
+    expect(slides).toHaveLength(4);
+    expect(slides.map((slide) => slide.position)).toEqual([1, 2, 3, 4]);
+    expect(slides[0]?.role).toBe("hook");
+    expect(slides[3]?.role).toBe("cta");
+    expect(slides[3]?.cta).toBe("Vyber si svůj termín");
+    expect(slides.every((slide) => slide.visualDirection.length > 20)).toBe(
+      true,
+    );
+  });
+
+  it("creates a valid visual request for every carousel page", () => {
+    const slides = createPostCarouselSlides("Benefity MyFit", kit);
+
+    for (const slide of slides) {
+      const slideKit = createSeriesSlideContentKit(kit, slide, {
+        title: "Benefity MyFit",
+        totalSlides: slides.length,
+      });
+      const request = createCalendarVisualRequestCopy(slideKit);
+      expect(request.headline.length).toBeLessThanOrEqual(160);
+      expect(request.theme.length).toBeLessThanOrEqual(240);
+    }
   });
 });

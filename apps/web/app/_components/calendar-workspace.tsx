@@ -9,12 +9,14 @@ import {
   calendarVisualReady,
   createCalendarVisualRequestCopy,
   createCalendarGraphic,
-  createStorySlideContentKit,
+  createPostCarouselSlides,
+  createSeriesSlideContentKit,
   getCalendarVisual,
   saveCalendarVisual,
   type CalendarContentKit,
+  type CalendarSlideDraft,
   type CalendarVisualMeta,
-  type SavedCalendarStorySlide,
+  type SavedCalendarSlide,
   type SavedCalendarVisual,
 } from "../_lib/calendar-visual";
 import {
@@ -41,7 +43,7 @@ import {
   type MonthlyPlanDraft,
 } from "../_lib/monthly-plan";
 import { pragueDateKey } from "../_lib/task-schedule";
-import { createStoryFrames, type StoryFrame } from "../_lib/story-series";
+import { createStoryFrames } from "../_lib/story-series";
 import { PlanImportDialog } from "./plan-import-dialog";
 
 type CalendarItem = CalendarStoreItem;
@@ -64,6 +66,43 @@ type VisualResponse = {
 type VisualMeta = Record<string, CalendarVisualMeta>;
 
 type AgentMessage = { role: "user" | "assistant"; text: string };
+
+type VisualSeriesFrame = CalendarSlideDraft;
+
+const brandBenefitPoints = [
+  {
+    headline: "Soukromí",
+    message: "Celé studio máš jen pro sebe.",
+  },
+  {
+    headline: "Bez čekání",
+    message: "Cvičíš tehdy, kdy chceš.",
+  },
+  {
+    headline: "Klid",
+    message: "Bez davů. Bez rušení.",
+  },
+];
+
+function graphicSupportingPoints(frames: VisualSeriesFrame[]) {
+  const contentPoints = frames
+    .filter((frame) => frame.role !== "hook" && frame.role !== "cta")
+    .map((frame) => ({
+      headline: frame.headline,
+      message: frame.message,
+    }));
+  const points = [...contentPoints, ...brandBenefitPoints];
+  return points
+    .filter(
+      (point, index) =>
+        points.findIndex(
+          (candidate) =>
+            candidate.headline.toLocaleLowerCase("cs-CZ") ===
+            point.headline.toLocaleLowerCase("cs-CZ"),
+        ) === index,
+    )
+    .slice(0, 3);
+}
 
 const STORAGE_KEY = "myfit-calendar-items-v2";
 const VISUAL_META_KEY = "myfit-calendar-visual-meta";
@@ -126,22 +165,37 @@ function contentCopy(item: CalendarItem) {
   };
 }
 
+function usefulFallbackHeadline(item: CalendarItem) {
+  const normalized = item.title.toLocaleLowerCase("cs-CZ");
+  if (normalized.includes("anketa"))
+    return "CO JE PRO TEBE PŘI TRÉNINKU NEJDŮLEŽITĚJŠÍ?";
+  if (normalized.includes("benefit")) return "TVŮJ PROSTOR. TVÉ TEMPO.";
+  if (normalized.includes("soukrom")) return "CELÉ FITNESS. JEN PRO TEBE.";
+  return item.title;
+}
+
 function defaultContentKit(item: CalendarItem): CalendarContentKit {
   const copy = contentCopy(item);
+  const isPoll = item.title.toLocaleLowerCase("cs-CZ").includes("anketa");
   const importedHeadline = item.graphicText
     ?.split("\n")
     .find((line) => line.trim())
     ?.trim();
-  const headline = importedHeadline || item.title;
+  const headline = importedHeadline || usefulFallbackHeadline(item);
   const caption =
     item.caption ||
-    `${item.title}. V MyFit máš prostor jen pro sebe a můžeš se soustředit na svůj trénink.`;
+    (isPoll
+      ? "Co je pro tebe při tréninku nejdůležitější — soukromí, klid, nebo možnost cvičit ve vlastním tempu? Napiš nám svůj pohled."
+      : `${item.title}. V MyFit máš prostor jen pro sebe a můžeš se soustředit na svůj trénink.`);
+  const message = isPoll
+    ? "Jednoduchá komunitní otázka s konkrétními možnostmi a výzvou k odpovědi."
+    : copy.message;
   const theme = [item.title, item.goal, item.campaign]
     .filter(Boolean)
     .join("; ");
-  return {
+  const kit: CalendarContentKit = {
     headline,
-    message: copy.message,
+    message,
     caption,
     cta: copy.cta,
     theme: theme || `${item.title}; soukromé fitness, klid a vlastní tempo`,
@@ -165,7 +219,7 @@ function defaultContentKit(item: CalendarItem): CalendarContentKit {
         id: "premium",
         label: "Prémiová",
         headline,
-        message: copy.message,
+        message,
         caption,
         cta: copy.cta,
       },
@@ -179,6 +233,41 @@ function defaultContentKit(item: CalendarItem): CalendarContentKit {
       },
     ],
   };
+  if (item.type === "POST")
+    kit.slides = createPostCarouselSlides(item.title, kit);
+  if (item.type === "STORY")
+    kit.slides = [
+      {
+        position: 1,
+        role: "hook",
+        headline,
+        message: isPoll ? "Vyber jednu možnost." : copy.message,
+        visualDirection:
+          "Silný úvodní slide s velkým headline, světlým mléčným přechodem a teplým studiem vpravo.",
+      },
+      {
+        position: 2,
+        role: "detail",
+        headline: isPoll ? "SOUKROMÍ, KLID, NEBO VOLNOST?" : "TVŮJ PROSTOR",
+        message: isPoll
+          ? "Co rozhoduje o tom, že se ti cvičí dobře?"
+          : "Klid, soukromí a vlastní tempo bez čekání.",
+        visualDirection:
+          "Konkrétní informace, tenká outline ikona a čistý architektonický detail privátního studia.",
+      },
+      {
+        position: 3,
+        role: "cta",
+        headline: isPoll ? "NAPIŠ NÁM SVŮJ POHLED" : "ČAS PRO SEBE",
+        message: isPoll
+          ? "Zajímá nás, co ti v MyFit vyhovuje nejvíc."
+          : "Vyber si chvíli, která patří jen tobě.",
+        visualDirection:
+          "Vzdušný závěrečný slide, jemné srdce nebo šipka a čistý prostor pro CTA.",
+        cta: isPoll ? item.cta || "Odpověz nám" : copy.cta,
+      },
+    ];
+  return kit;
 }
 
 function formatDate(date: string) {
@@ -340,22 +429,74 @@ export function CalendarWorkspace() {
             graphicText: editingItem.graphicText,
             visualDirection: editingItem.visualDirection,
             cta: editingItem.cta,
-            count: editingItem.storySlideCount,
+            count: editingItem.storySlideCount ?? 3,
           })
       : [];
-  const isStorySeries = editingStoryFrames.length > 1;
-  const activeStorySlides = activeVisual?.storySlides ?? [];
   const selectedTextVariant =
     contentKit?.textVariants.find(
       (variant) => variant.id === selectedVariantId,
     ) ?? contentKit?.textVariants[0];
+  const selectedKit =
+    contentKit && selectedTextVariant
+      ? {
+          ...contentKit,
+          headline: selectedTextVariant.headline,
+          message: selectedTextVariant.message,
+          caption: selectedTextVariant.caption,
+          cta: selectedTextVariant.cta,
+        }
+      : contentKit;
+  const editingVisualFrames: VisualSeriesFrame[] =
+    editingItem?.type === "STORY"
+      ? !editingItem.storyFrames?.length && selectedKit?.slides?.length
+        ? selectedKit.slides
+        : editingStoryFrames.map((frame, index) => ({
+            position: frame.position,
+            role:
+              index === 0
+                ? "hook"
+                : index === editingStoryFrames.length - 1
+                  ? "cta"
+                  : "detail",
+            headline: frame.text.split("\n")[0]?.trim() || editingItem.title,
+            message: frame.text.replace(/\n+/g, " ").trim(),
+            visualDirection: frame.direction,
+            cta:
+              index === editingStoryFrames.length - 1
+                ? editingItem.cta || selectedKit?.cta
+                : undefined,
+          }))
+      : editingItem?.type === "POST" && selectedKit
+        ? createPostCarouselSlides(editingItem.title, selectedKit)
+        : [];
+  const isVisualSeries =
+    (editingItem?.type === "STORY" && editingVisualFrames.length > 1) ||
+    (editingItem?.type === "POST" && editingVisualFrames.length > 1);
+  const persistedSeriesSlides =
+    activeVisual?.slides ?? activeVisual?.storySlides ?? [];
+  const activeSeriesSlides: SavedCalendarSlide[] =
+    editingItem?.type === "POST" &&
+    activeVisual &&
+    !persistedSeriesSlides.length
+      ? [
+          {
+            position: 1,
+            dataUrl: activeVisual.dataUrl,
+            generatedAt: activeVisual.generatedAt,
+            mode: activeVisual.mode,
+            version: 1,
+            kit: activeVisual.kit,
+          },
+        ]
+      : persistedSeriesSlides;
   const editingReadiness = editingItem
     ? readinessFor(
         editingItem,
         calendarVisualReady(
           editingItem,
           visualMeta[editingItem.id],
-          isStorySeries ? activeStorySlides.length : undefined,
+          isVisualSeries ? activeSeriesSlides.length : undefined,
+          isVisualSeries ? editingVisualFrames.length : undefined,
         ),
       )
     : null;
@@ -479,8 +620,8 @@ export function CalendarWorkspace() {
 
   async function generateVisual() {
     if (!editingItem || editingItem.type === "ÚKOL" || !contentKit) return;
-    if (isStorySeries) {
-      await generateStorySeries();
+    if (isVisualSeries) {
+      await generateVisualSeries();
       return;
     }
     setVisualBusy(true);
@@ -571,7 +712,11 @@ export function CalendarWorkspace() {
         ...current,
         "Grafika složená a uložená ke konkrétní události ✓",
       ]);
-      setNotice("AI agent připravil text i grafiku a uložil je ke kalendáři.");
+      setNotice(
+        savedVisual.mode === "live"
+          ? "AI agent připravil text i grafiku a uložil je ke kalendáři."
+          : "Byl použit demo fotografický podklad. Pro skutečnou AI grafiku je potřeba připojit OpenAI API klíč v Netlify.",
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Agent návrh nedokončil.";
@@ -607,19 +752,20 @@ export function CalendarWorkspace() {
     };
   }
 
-  async function createStorySlide(
-    frame: StoryFrame,
+  async function createVisualSlide(
+    frame: VisualSeriesFrame,
     baseKit: CalendarContentKit,
-    currentSlides: SavedCalendarStorySlide[],
+    currentSlides: SavedCalendarSlide[],
+    seriesFrames: VisualSeriesFrame[],
   ) {
-    if (!editingItem) throw new Error("Chybí událost Story.");
+    if (!editingItem) throw new Error("Chybí obsahová událost.");
     const currentSlide = currentSlides.find(
       (slide) => slide.position === frame.position,
     );
-    const frameKit = createStorySlideContentKit(baseKit, frame, {
+    const frameKit = createSeriesSlideContentKit(baseKit, frame, {
       title: editingItem.title,
       cta: editingItem.cta,
-      totalSlides: editingStoryFrames.length,
+      totalSlides: seriesFrames.length,
     });
     const composition: MyfitStoryComposition = currentSlide
       ? currentSlide.version % 2 === 1
@@ -634,8 +780,11 @@ export function CalendarWorkspace() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...requestCopy,
-        format: "story",
-        template: "story_private_benefit",
+        format: editingItem.type === "POST" ? "post" : "story",
+        template:
+          editingItem.type === "POST"
+            ? "post_announcement"
+            : "story_private_benefit",
         composition,
         memory: loadMarketingState(defaultItems).agentMemory,
       }),
@@ -651,17 +800,28 @@ export function CalendarWorkspace() {
       myfitVisualTemplates[result.data.template].backgroundAsset;
     return {
       position: frame.position,
-      dataUrl: await createCalendarGraphic("STORY", frameKit, background),
+      dataUrl: await createCalendarGraphic(
+        editingItem.type,
+        frameKit,
+        background,
+        {
+          position: frame.position,
+          total: seriesFrames.length,
+          role: frame.role,
+          supportingPoints: graphicSupportingPoints(seriesFrames),
+        },
+      ),
       generatedAt: new Date().toISOString(),
       mode: result.data.mode,
       version: (currentSlide?.version ?? 0) + 1,
       kit: frameKit,
-    } satisfies SavedCalendarStorySlide;
+    } satisfies SavedCalendarSlide;
   }
 
-  async function persistStorySlides(
-    slides: SavedCalendarStorySlide[],
+  async function persistVisualSlides(
+    slides: SavedCalendarSlide[],
     baseKit: CalendarContentKit,
+    expectedSlides: number,
   ) {
     if (!editingItem || !slides[0]) return;
     const orderedSlides = [...slides].sort(
@@ -677,16 +837,19 @@ export function CalendarWorkspace() {
         ? "live"
         : "demo",
       kit: baseKit,
-      storySlides: orderedSlides,
+      slides: orderedSlides,
+      storySlides: editingItem.type === "STORY" ? orderedSlides : undefined,
     };
     await saveCalendarVisual(savedVisual);
     setActiveVisual(savedVisual);
-    if (orderedSlides.length === editingStoryFrames.length) {
+    if (orderedSlides.length === expectedSlides) {
       const nextMeta = {
         ...visualMeta,
         [editingItem.id]: {
           generatedAt: savedVisual.generatedAt,
           mode: savedVisual.mode,
+          storySlideCount:
+            editingItem.type === "STORY" ? expectedSlides : undefined,
         },
       };
       setVisualMeta(nextMeta);
@@ -694,23 +857,30 @@ export function CalendarWorkspace() {
     }
   }
 
-  async function regenerateStorySlide(frame: StoryFrame) {
+  async function regenerateVisualSlide(frame: VisualSeriesFrame) {
     if (!editingItem || storyBusyPositions.includes(frame.position)) return;
     setStoryBusyPositions((current) => [...current, frame.position]);
     try {
       const baseKit = await resolveSelectedKit();
-      const slide = await createStorySlide(
+      const frames =
+        editingItem.type === "POST"
+          ? createPostCarouselSlides(editingItem.title, baseKit)
+          : !editingItem.storyFrames?.length && baseKit.slides?.length
+            ? baseKit.slides
+            : editingVisualFrames;
+      const slide = await createVisualSlide(
         frame,
         baseKit,
-        activeVisual?.storySlides ?? [],
+        activeSeriesSlides,
+        frames,
       );
       const slides = [
-        ...(activeVisual?.storySlides ?? []).filter(
+        ...activeSeriesSlides.filter(
           (current) => current.position !== frame.position,
         ),
         slide,
       ];
-      await persistStorySlides(slides, baseKit);
+      await persistVisualSlides(slides, baseKit, editingVisualFrames.length);
       setNotice(`Slide ${frame.position} je připravený a uložený.`);
     } catch (error) {
       setNotice(
@@ -725,34 +895,38 @@ export function CalendarWorkspace() {
     }
   }
 
-  async function generateStorySeries() {
+  async function generateVisualSeries() {
     if (!editingItem || !contentKit || visualBusy) return;
     setVisualBusy(true);
-    setNotice(`Tvořím Story sérii · 0/${editingStoryFrames.length}…`);
+    setNotice(`Tvořím sérii · 0/${editingVisualFrames.length}…`);
     try {
       const baseKit = await resolveSelectedKit();
-      let slides = [...(activeVisual?.storySlides ?? [])];
-      for (const frame of editingStoryFrames) {
+      const frames =
+        editingItem.type === "POST"
+          ? createPostCarouselSlides(editingItem.title, baseKit)
+          : !editingItem.storyFrames?.length && baseKit.slides?.length
+            ? baseKit.slides
+            : editingVisualFrames;
+      let slides = [...activeSeriesSlides];
+      for (const frame of frames) {
         setStoryBusyPositions([frame.position]);
-        const slide = await createStorySlide(frame, baseKit, slides);
+        const slide = await createVisualSlide(frame, baseKit, slides, frames);
         slides = [
           ...slides.filter((current) => current.position !== frame.position),
           slide,
         ];
-        await persistStorySlides(slides, baseKit);
-        setNotice(
-          `Tvořím Story sérii · ${slides.length}/${editingStoryFrames.length}…`,
-        );
+        await persistVisualSlides(slides, baseKit, frames.length);
+        setNotice(`Tvořím sérii · ${slides.length}/${frames.length}…`);
       }
       setContentKit(baseKit);
       setNotice(
-        `Hotovo. Připraveny ${editingStoryFrames.length} samostatné Story slidy.`,
+        slides.some((slide) => slide.mode === "live")
+          ? `Hotovo. Připraveny ${frames.length} samostatné stránky s texty pro Canvu.`
+          : `Připraveny ${frames.length} demo stránky. Pro skutečně generované fotografie je potřeba připojit OpenAI API klíč v Netlify.`,
       );
     } catch (error) {
       setNotice(
-        error instanceof Error
-          ? error.message
-          : "Story série nebyla dokončena.",
+        error instanceof Error ? error.message : "Série nebyla dokončena.",
       );
     } finally {
       setStoryBusyPositions([]);
@@ -760,13 +934,13 @@ export function CalendarWorkspace() {
     }
   }
 
-  function downloadStorySeries() {
-    [...activeStorySlides]
+  function downloadVisualSeries() {
+    [...activeSeriesSlides]
       .sort((first, second) => first.position - second.position)
       .forEach((slide, index) => {
         window.setTimeout(() => {
           const link = document.createElement("a");
-          link.download = `myfit-${editingItem?.id ?? "story"}-${String(slide.position).padStart(2, "0")}.png`;
+          link.download = `myfit-${editingItem?.id ?? "obsah"}-${String(slide.position).padStart(2, "0")}.png`;
           link.href = slide.dataUrl;
           link.click();
         }, index * 180);
@@ -1276,19 +1450,22 @@ export function CalendarWorkspace() {
               <>
                 <div className="calendar-content-detail">
                   <div className="calendar-visual-column">
-                    {isStorySeries ? (
+                    {isVisualSeries ? (
                       <div className="calendar-story-series">
                         <div className="calendar-story-series-heading">
                           <strong>
-                            Story série · {editingStoryFrames.length} slidy
+                            {editingItem.type === "POST"
+                              ? "Post carousel"
+                              : "Story série"}{" "}
+                            · {editingVisualFrames.length} stránky
                           </strong>
                           <span>
-                            {activeStorySlides.length}/
-                            {editingStoryFrames.length} připraveno
+                            {activeSeriesSlides.length}/
+                            {editingVisualFrames.length} připraveno
                           </span>
                         </div>
-                        {editingStoryFrames.map((frame) => {
-                          const slide = activeStorySlides.find(
+                        {editingVisualFrames.map((frame) => {
+                          const slide = activeSeriesSlides.find(
                             (candidate) =>
                               candidate.position === frame.position,
                           );
@@ -1303,18 +1480,23 @@ export function CalendarWorkspace() {
                               </div>
                               {slide ? (
                                 <NextImage
-                                  alt={`Story slide ${frame.position} pro ${editingItem.title}`}
+                                  alt={`Stránka ${frame.position} pro ${editingItem.title}`}
                                   className="calendar-generated-visual"
-                                  height={1920}
+                                  height={
+                                    editingItem.type === "POST" ? 1350 : 1920
+                                  }
                                   src={slide.dataUrl}
                                   unoptimized
                                   width={1080}
                                 />
                               ) : (
-                                <div className="calendar-story-placeholder">
+                                <div
+                                  className={`calendar-story-placeholder ${editingItem.type === "POST" ? "post" : "story"}`}
+                                >
                                   <span>MY FIT</span>
-                                  <strong>{frame.text}</strong>
-                                  <small>{frame.direction}</small>
+                                  <strong>{frame.headline}</strong>
+                                  <p>{frame.message}</p>
+                                  <small>{frame.visualDirection}</small>
                                 </div>
                               )}
                               <div className="button-row wrap-buttons">
@@ -1323,7 +1505,7 @@ export function CalendarWorkspace() {
                                   disabled={storyBusyPositions.includes(
                                     frame.position,
                                   )}
-                                  onClick={() => regenerateStorySlide(frame)}
+                                  onClick={() => regenerateVisualSlide(frame)}
                                   type="button"
                                 >
                                   {storyBusyPositions.includes(frame.position)
@@ -1381,27 +1563,27 @@ export function CalendarWorkspace() {
                       type="button"
                     >
                       {visualBusy
-                        ? isStorySeries
-                          ? "Agent tvoří Story sérii…"
+                        ? isVisualSeries
+                          ? "Agent tvoří celou sérii…"
                           : "Agent tvoří grafiku…"
-                        : isStorySeries
-                          ? activeStorySlides.length
-                            ? `Regenerovat celou sérii (${editingStoryFrames.length} PNG)`
-                            : `Vytvořit celou sérii (${editingStoryFrames.length} slidů)`
+                        : isVisualSeries
+                          ? activeSeriesSlides.length
+                            ? `Regenerovat celou sérii (${editingVisualFrames.length} PNG)`
+                            : `Vytvořit celou sérii (${editingVisualFrames.length} stránky)`
                           : activeVisual
                             ? "Vytvořit novou variantu"
                             : "Vygenerovat grafiku s agentem"}
                     </button>
-                    {isStorySeries &&
-                    activeStorySlides.length === editingStoryFrames.length ? (
+                    {isVisualSeries &&
+                    activeSeriesSlides.length === editingVisualFrames.length ? (
                       <button
                         className="secondary-button download-button"
-                        onClick={downloadStorySeries}
+                        onClick={downloadVisualSeries}
                         type="button"
                       >
-                        Stáhnout celou sérii ({editingStoryFrames.length} PNG)
+                        Stáhnout celou sérii ({editingVisualFrames.length} PNG)
                       </button>
-                    ) : !isStorySeries && activeVisual ? (
+                    ) : !isVisualSeries && activeVisual ? (
                       <a
                         className="secondary-button link-button"
                         download={`myfit-${editingItem.id}.png`}
@@ -1465,6 +1647,38 @@ export function CalendarWorkspace() {
                         </dd>
                       </div>
                     </dl>
+
+                    {isVisualSeries ? (
+                      <section className="carousel-copy-section">
+                        <div className="section-heading-compact">
+                          <div>
+                            <p className="eyebrow accent">Podklady do Canvy</p>
+                            <h3>
+                              Texty a směr pro všechny{" "}
+                              {editingVisualFrames.length} stránky
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="carousel-copy-grid">
+                          {editingVisualFrames.map((frame) => (
+                            <article key={`copy-${frame.position}`}>
+                              <span>
+                                {String(frame.position).padStart(2, "0")} ·{" "}
+                                {frame.role === "hook"
+                                  ? "cover"
+                                  : frame.role === "cta"
+                                    ? "CTA"
+                                    : "obsah"}
+                              </span>
+                              <strong>{frame.headline}</strong>
+                              <p>{frame.message}</p>
+                              <small>{frame.visualDirection}</small>
+                              {frame.cta ? <b>CTA: {frame.cta}</b> : null}
+                            </article>
+                          ))}
+                        </div>
+                      </section>
+                    ) : null}
 
                     <section className="text-variant-section">
                       <div className="section-heading-compact">

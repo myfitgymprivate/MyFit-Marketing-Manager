@@ -1587,6 +1587,17 @@ select:focus {
   border-radius: 14px;
 }
 
+.calendar-story-placeholder.post {
+  aspect-ratio: 4 / 5;
+}
+
+.calendar-story-placeholder p {
+  margin: 8px 0 auto;
+  max-width: 28ch;
+  color: #3c352c;
+  line-height: 1.45;
+}
+
 .calendar-story-placeholder span,
 .calendar-story-placeholder small {
   color: var(--accent-dark);
@@ -1692,6 +1703,59 @@ select:focus {
 
 .calendar-content-facts {
   margin: 0;
+}
+
+.carousel-copy-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.carousel-copy-grid {
+  margin-top: 13px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.carousel-copy-grid article {
+  min-height: 190px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(145deg, #fffaf2, #f6e6cc);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.carousel-copy-grid span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.carousel-copy-grid strong {
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+
+.carousel-copy-grid p,
+.carousel-copy-grid small {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.carousel-copy-grid small {
+  color: var(--muted);
+}
+
+.carousel-copy-grid b {
+  margin-top: auto;
+  color: var(--accent-dark);
+  font-size: 11px;
 }
 
 .preserve-lines {
@@ -2980,6 +3044,7 @@ select:focus {
   }
 
   .text-variant-grid,
+  .carousel-copy-grid,
   .event-agent-composer {
     grid-template-columns: 1fr;
   }
